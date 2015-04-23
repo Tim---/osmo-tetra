@@ -10,6 +10,7 @@ enum tp_sap_data_type {
 	TPSAP_T_BBK,
 	TPSAP_T_SCH_HU,
 	TPSAP_T_SCH_F,
+	TPSAP_T_TCH,
 };
 
 extern void tp_sap_udata_ind(enum tp_sap_data_type type, const uint8_t *bits, unsigned int len, void *priv);

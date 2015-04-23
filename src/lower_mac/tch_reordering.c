@@ -30,10 +30,10 @@
 static const uint8_t class0_positions[NUM_ACELP_CLASS0_BITS] = {
 	35, 36, 37,
 	38, 39, 40,
-	41, 42, 33,
+	41, 42, 43,
 	47, 48,
 	56,
-	61, 62, 63,
+	61, 62, 63, 64,
 	65, 66, 67,
 	68, 69, 70,
 	74, 75,
@@ -98,19 +98,19 @@ void tetra_acelp_type2_to_codec(const uint8_t *in, uint8_t *out)
 
 	for (bit = 0; bit < NUM_ACELP_CLASS0_BITS; bit++) {
 		for (frame = 0; frame < 2; frame++) 
-			out[frame*NUM_ACELP_BITS + class0_positions[bit] - 1] = in_cur[2*bit + frame];
+			out[frame*(NUM_ACELP_BITS+1) + class0_positions[bit]] = in_cur[2*bit + frame];
 	}
 	in_cur += 2*NUM_ACELP_CLASS0_BITS;
 
 	for (bit = 0; bit < NUM_ACELP_CLASS1_BITS; bit++) {
 		for (frame = 0; frame < 2; frame++) 
-			out[frame*NUM_ACELP_BITS + class1_positions[bit] - 1] = in_cur[2*bit + frame];
+			out[frame*(NUM_ACELP_BITS+1) + class1_positions[bit]] = in_cur[2*bit + frame];
 	}
 	in_cur += 2*NUM_ACELP_CLASS1_BITS;
 
 	for (bit = 0; bit < NUM_ACELP_CLASS2_BITS; bit++) {
 		for (frame = 0; frame < 2; frame++) 
-			out[frame*NUM_ACELP_BITS + class2_positions[bit] - 1] = in_cur[2*bit + frame];
+			out[frame*(NUM_ACELP_BITS+1) + class2_positions[bit]] = in_cur[2*bit + frame];
 	}
 
 	/* FIXME: same for STCH use */

@@ -46,7 +46,7 @@ static const uint8_t conv_tch_next_state[][2] = {
 };
 
 static const struct osmo_conv_code conv_tch = {
-	.N = 4,
+	.N = 3,
 	.K = 5,
 	.next_output = conv_tch_next_output,
 	.next_state  = conv_tch_next_state,

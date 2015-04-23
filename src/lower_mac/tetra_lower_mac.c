@@ -184,7 +184,25 @@ void tp_sap_udata_ind(enum tp_sap_data_type type, const uint8_t *bits, unsigned 
 	DEBUGP("%s %s type4: %s\n", tbp->name, time_str,
 		osmo_ubit_dump(type4, tbp->type345_bits));
 
-	if (tbp->interleave_a) {
+	if(type == TPSAP_T_SCH_F && tms->cur_burst.is_traffic) {
+		type = TPSAP_T_TCH;
+	}
+
+	if(type == TPSAP_T_TCH) {
+		/* Run matric deinterleaving: type-3 bits */
+		matrix_deinterleave(24, 18, type4, type3);
+		
+		/* De-puncture */
+		memset(type3dp, 0xff, sizeof(type3dp));
+		/* Class 0 (2*51 bits) is not concerned */
+		memcpy(type2, type3, 102);
+		/* Class 1 (168 bits punctured -> 336 bits of mother code) */
+		tetra_rcpc_depunct(TETRA_RCPC_PUNCT_112_168, type3 + 102, 168, type3dp);
+		/* Class 2 (162 bits punctured -> 216 bits of mother code) */
+		tetra_rcpc_depunct(TETRA_RCPC_PUNCT_72_162, type3 + 270, 162, type3dp + 336); // On rajoute 216 bits de classe 2 dans type3dp
+		/* Decode class 1 & 2 */
+		viterbi_dec_tch_wrapper(type3dp, type2 + 102, 184);
+	} else if (tbp->interleave_a) {
 		/* Run block deinterleaving: type-3 bits */
 		block_deinterleave(tbp->type345_bits, tbp->interleave_a, type4, type3);
 		DEBUGP("%s %s type3: %s\n", tbp->name, time_str,
@@ -199,7 +217,10 @@ void tp_sap_udata_ind(enum tp_sap_data_type type, const uint8_t *bits, unsigned 
 			osmo_ubit_dump(type2, tbp->type2_bits));
 	}
 
-	if (tbp->have_crc16) {
+	if (type == TPSAP_T_TCH) {
+		/* FIXME : use proper CRC function */
+		tup->crc_ok = 1;
+	} else if (tbp->have_crc16) {
 		uint16_t crc = crc16_ccitt_bits(type2, tbp->type1_bits+16);
 		printf("CRC COMP: 0x%04x ", crc);
 		if (crc == TETRA_CRC_OK) {
@@ -217,8 +238,16 @@ void tp_sap_udata_ind(enum tp_sap_data_type type, const uint8_t *bits, unsigned 
 			osmo_ubit_dump(type2, tbp->type1_bits));
 	}
 
-	msg->l1h = msgb_put(msg, tbp->type1_bits);
-	memcpy(msg->l1h, type2, tbp->type1_bits);
+	if(type == TPSAP_T_TCH) {
+		msg->l1h = msgb_put(msg, 2*138);
+		tetra_acelp_type2_to_codec(type2, msg->l1h);
+		/* Add bad frame indicators */
+		msg->l1h[0] = 1-tup->crc_ok;
+		msg->l1h[138] = 1-tup->crc_ok;
+	} else {
+		msg->l1h = msgb_put(msg, tbp->type1_bits);
+		memcpy(msg->l1h, type2, tbp->type1_bits);
+	}
 
 	switch (type) {
 	case TPSAP_T_SB1:
@@ -250,6 +279,9 @@ void tp_sap_udata_ind(enum tp_sap_data_type type, const uint8_t *bits, unsigned 
 		break;
 	case TPSAP_T_SCH_F:
 		tup->lchan = TETRA_LC_SCH_F;
+		break;
+	case TPSAP_T_TCH:
+		tup->lchan = TETRA_LC_TCH;
 		break;
 	default:
 		/* FIXME: do something */
